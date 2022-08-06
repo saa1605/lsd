@@ -33,18 +33,11 @@ class Loader:
 
     def add_tokens(self, message_arr):
         new_dialog = ""
-        
-        
         for enum, message in enumerate(message_arr):
-            # if enum %2 == 1:
-            #     new_dialog += message[:-1] + f' which is in {self.args.color_names[enum % 6]} color. '
-            # else:
-            new_dialog += message + ' '
-        #     if enum % 2 == 0:
-        #         new_dialog += "SOLM " + message + " EOLM "
-        #     else:
-        #         new_dialog += "SOOM " + message + " EOOM "
-        # print(new_dialog)
+            if enum %2 == 1:
+                new_dialog += message[:-1] + f' which is in {self.args.color_names[enum % 6]} color. '
+            else:
+                new_dialog += message + ' '
         return new_dialog
 
     def load_locations(self, data, mode):
@@ -68,28 +61,7 @@ class Loader:
         self.vocab.idx2word = json.load(open(self.args.embedding_dir + "idx2word.json"))
         ids = []
         seq_lengths = []
-        # for i, text in enumerate(texts): 
-        #     try:
-        #         text = re.sub(r"\.\.+", ". ", text)
-        #         text = re.sub(r"\.\s\?", " ? ", text)
 
-        #         # Odd case
-        #         if 'lol.' in text:
-        #             text = text.replace('lol.', 'lol .')
-
-
-        #         line_ids = []                    
-        #         words = word_tokenize(text.lower())
-        #         self.max_length = max(self.max_length, len(words))
-        #         for word in words:
-        #             line_ids.append(self.vocab.word2idx[word])
-        #         ids.append(line_ids)
-        #         seq_lengths.append(len(words))
-        #     except:
-        #         print(word, words, i)
-                
-
-        # text_ids = np.array([row + [0] * (self.max_length - len(row)) for row in ids])
         return texts, seq_lengths
 
     def build_dataset(self, file):

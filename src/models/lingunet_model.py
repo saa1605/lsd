@@ -29,6 +29,7 @@ class LinearProjectionLayers(nn.Module):
                     padding=0,
                     stride=1,
                 ),
+                
                 nn.ReLU(),
                 nn.Conv2d(linear_hidden_size, 1, kernel_size=1, padding=0, stride=1),
             )
@@ -41,7 +42,6 @@ class LinearProjectionLayers(nn.Module):
         if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
             torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
-
 
 class LingUNet(nn.Module):
     def __init__(self, args):

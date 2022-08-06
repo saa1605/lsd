@@ -91,11 +91,10 @@ class LEDDataset(Dataset):
             img = Image.open(
                 "{}floor_{}/{}_{}.png".format(self.args.image_dir, f, sn, f)
             )
-            # if int(f) in bboxes_on_floors:
-            #     for bb in bboxes_on_floors[int(f)]:
-            #         bbox_idx, _, bbox_coords = bb
-            #         img = self.paint_bbox(img, bbox_coords, self.args.colors[bbox_idx % 6]) 
-                    # self.painted_images.append(img)
+            if int(f) in bboxes_on_floors:
+                for bb in bboxes_on_floors[int(f)]:
+                    bbox_idx, _, bbox_coords = bb
+                    img = self.paint_bbox(img, bbox_coords, self.args.colors[bbox_idx % 6]) 
             
             img = img.resize((self.image_size[2], self.image_size[1]))
             if "train" in self.mode:

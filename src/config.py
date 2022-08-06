@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument("--processed_save_path", type=str, default="../data/processed")
 parser.add_argument("--interim_save_path", type=str, default="../data/interim")
 # Output Paths
-parser.add_argument("--checkpoint_dir", type=str, default="../reports/checkpoints/")
+parser.add_argument("--checkpoint_dir", type=str, default="../models/checkpoints/")
 parser.add_argument("--predictions_dir", type=str, default="../reports/predictions")
 parser.add_argument("--model_save", default=False, action="store_true")
 parser.add_argument(

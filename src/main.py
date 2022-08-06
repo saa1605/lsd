@@ -54,22 +54,25 @@ class LingUNetAgent:
     def run_test(self):
         print("Starting Evaluation...")
         s = torch.load(self.args.eval_ckpt, map_location='cuda:0')
-        self.args, self.rnn_args, self.state_dict, self.optimizer_state_dict = s.values()
+        self.old_args, self.rnn_args, self.state_dict, self.optimizer_state_dict = s.values()
         # self.args = load_oldArgs(self.args, oldArgs)
         self.model = LingUNet(self.args)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
             self.model = nn.DataParallel(self.model)
         self.model.load_state_dict(self.state_dict)
-        # self.model = self.model.to(device=self.args.device)
-
-        loss, acc0m, acc5m = self.eval_model(self.valseen_iterator, "valSeen")
+        self.model = self.model.to(device=self.args.device)
+        del self.state_dict, self.optimizer_state_dict, s
+        with torch.no_grad():
+            loss, acc0m, acc5m = self.eval_model(self.valseen_iterator, "valSeen")
         self.scores("valSeen", loss, acc0m, acc5m, 0)
         evaluate(self.args, "valSeen_data.json", self.args.run_name)
-        loss, acc0m, acc5m = self.eval_model(self.val_unseen_iterator, "valUnseen")
+        with torch.no_grad():
+            loss, acc0m, acc5m = self.eval_model(self.val_unseen_iterator, "valUnseen")
         self.scores("valUnseen", loss, acc0m, acc5m, 0)
         evaluate(self.args, "valUnseen_data.json", self.args.run_name)
-        # loss, acc0m, acc5m = self.eval_model(self.test_iterator, "test")
+        with torch.no_grad():
+            loss, acc0m, acc5m = self.eval_model(self.test_iterator, "test")
 
     def run_epoch(
         self,
@@ -116,12 +119,12 @@ class LingUNetAgent:
             accuracy5m.append(acc5m)
             for i in ep:
                 submission[i[0]] = {"viewpoint": i[1]}
-
-        if self.args.evaluate:
-            fileName = f"{self.args.run_name}_{mode}_submission.json"
-            fileName = os.path.join(self.args.predictions_dir, fileName)
-            json.dump(submission, open(fileName, "w"), indent=3)
-            print("submission saved at ", fileName)
+        # print(self.args.evaluate)
+        # if self.args.evaluate:
+        fileName = f"{self.args.run_name}_{mode}_submission.json"
+        fileName = os.path.join(self.args.predictions_dir, fileName)
+        json.dump(submission, open(fileName, "w"), indent=3)
+        print("submission saved at ", fileName)
         return (
             np.mean(loss),
             np.mean(np.asarray(accuracy0m)),
@@ -244,8 +247,8 @@ class LingUNetAgent:
     def load_data(self):
         self.loader = Loader(args)
         # self.loader.build_dataset(file="train_expanded_data.json")
-        self.loader.build_dataset(file="train_augmented_data.json")
-        # self.loader.build_dataset(file="train_data.json")
+        # self.loader.build_dataset(file="train_augmented_data.json")
+        self.loader.build_dataset(file="train_data.json")
         # self.loader.build_dataset(file="train_debug_data.json")
         self.loader.build_dataset(file="valSeen_data.json")
         # self.loader.build_dataset(file="valSeen_debug_data.json")
@@ -278,9 +281,10 @@ class LingUNetAgent:
 
     def run(self):
         self.load_data()
+        print(self.args.evaluate)
         if self.args.train:
             self.run_train()
-
+        
         elif self.args.evaluate:
             self.run_test()
 

@@ -22,7 +22,7 @@ setup_dict = {
     'raw_data_path': '../../data/raw',
     'interim_save_path': '../../data/interim',
     'processed_save_path': '../../data/processed',
-    'data_file': '../../data/raw/way_splits/train_expanded_data.json',
+    'data_file': '../../data/raw/way_splits/test_data.json',
     'valUnseen_data_file': '../../data/raw/way_splits/valUnseen_data.json',
     'train_data_file': '../../data/raw/way_splits/train_data.json',
     'valSenn_data_file': '../../data/raw/way_splits/valSeen_data.json',
@@ -38,7 +38,7 @@ setup_dict = {
     'device': 'cuda:0' if torch.cuda.is_available() else 'cpu', 
     'tokenizer': clip.tokenize,
     # feature extraction modes 
-    'data_mode': 'train_expanded',
+    'data_mode': 'test',
     'text_feature_mode': 'one_utterance', 
     'rpn_mode': 'conventional',
     'colors': [(240,0,30), (155,50,210), (255,255,25), (0,10,255), (255,170,230), (0,255,0)],
@@ -218,18 +218,18 @@ def main(config):
     pp.pprint(unique_scans_val_unseen[0])
 
 
-    if not exists(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_train.npy"):
+    if not exists(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy"):
         scan_bbox_arr = compute_all_bounding_boxes(unique_scans_val_unseen, config.floorplans, config.scan_levels_file, rpn)
-        np.save(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_train.npy", scan_bbox_arr)
+        np.save(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", scan_bbox_arr)
     else:
-        scan_bbox_arr = np.load(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_train.npy", allow_pickle=True)
+        scan_bbox_arr = np.load(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", allow_pickle=True)
     pp.pprint(scan_bbox_arr[0])
     
-    if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_train.pt'):
+    if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt'):
         image_features = compute_image_features(unique_scans_val_unseen, scan_bbox_arr, config.floorplans, model, config.device, transform)
-        torch.save(image_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_train.pt')
+        torch.save(image_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
     else:
-        image_features = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_train.pt')
+        image_features = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
     pp.pprint(image_features[0])
 
     scan2idx = compute_scan2idx(unique_scans_val_unseen)

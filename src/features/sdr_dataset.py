@@ -103,7 +103,7 @@ class SDRDataset(Dataset):
         gaussian_target[int(level), location[0], location[1]] = 1
         gaussian_target[int(level), :, :] = gaussian_filter(
             gaussian_target[int(level), :, :],
-            sigma=80.,
+            sigma=40.,
         )
         gaussian_target[int(level), :, :] = (
             gaussian_target[int(level), :, :]

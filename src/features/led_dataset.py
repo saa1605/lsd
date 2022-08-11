@@ -106,6 +106,26 @@ class LEDDataset(Dataset):
 
         return all_maps, all_conversions
 
+    def gather_true_floor(self, index, paint_box):
+        f = self.levels[index]
+        sn = self.scan_names[index]
+
+        img = Image.open(
+                "{}floor_{}/{}_{}.png".format(self.args.image_dir, f, sn, f)
+            )
+        if paint_box:
+            for bb in bboxes_on_floors[int(f)]:
+                    bbox_idx, _, bbox_coords = bb
+                    img = self.paint_bbox(img, bbox_coords, self.args.colors[bbox_idx % 6]) 
+
+        img = img.resize((self.image_size[2], self.image_size[1]))
+
+        true_map = self.preprocess_data_aug(img)[:3, :, :]
+        true_conversion = self.mesh2meters[sn][f]["threeMeterRadius"] / 3.0
+
+        return true_map, true_conversion
+
+        
 
     def paint_bbox(self, image, bbox, color):
         x1, y1, x2, y2 = bbox
@@ -303,6 +323,7 @@ class LEDDataset(Dataset):
         text = text.squeeze(0) 
         # seq_length = np.array(self.seq_lengths[index])
         maps, conversions = self.gather_all_floors(index)
+        true_map, true_converion = self.gather_true_floor(index, False)
         # region_segments = region_segments.squeeze(1)
         # rooms = self.gather_all_rooms(index)
         # if self.mode == 'train':

@@ -32,6 +32,32 @@ def evaluate(args, splitFile, run_name):
         f"Acc@10m: {sum(distance_scores <= 10) * 1.0 / len(distance_scores):.4f}",
     )
 
+def euclidean_distance_from_pixels(args, preds, mesh_conversions, info_elem, mode, target_coords):
+    node2pix = json.load(open(args.image_dir + "allScans_Node2pix.json"))
+    geodistance_nodes = json.load(open(args.geodistance_file))
+    distances, episode_predictions = [], []
+    dialogs, levels, scan_names, episode_ids, true_viewpoints = info_elem
+    for pred, conversion, sn, tv, id in zip(
+        preds, mesh_conversions, scan_names, true_viewpoints, episode_ids
+    ):
+        total_floors = len(set([v[2] for k, v in node2pix[sn].items()]))
+        pred = nn.functional.interpolate(
+            pred.unsqueeze(1), (700, 1200), mode="bilinear"
+        ).squeeze(1)[:total_floors]
+        pred_coord = np.unravel_index(pred.argmax(), pred.size())
+        # convers = conversion.view(args.max_floors, 1, 1)[pred_coord[0].item()]
+        convers = conversion[true_level]
+        if pred_coord[0] == true_level:
+            eu_dist = np.sqrt((pred_coord[1] - location[1]) ** 2 + (pred_coord[2] - location[0]) ** 2) // convers
+            distances.append(eu_dist) 
+        else:
+            distances.append(11)
+
+        
+        
+
+
+
 
 def accuracy(dists, threshold=3):
     """Calculating accuracy at 3 meters by default"""

@@ -9,6 +9,7 @@ class RegionProposalNetwork:
                                 K_min_box_w=0.03, K_min_box_h=0.03, iou_threshold=0.9):
         img = pil_img.copy()
         img = np.array(img)
+
         img = self._c_mean_shift(img)
         img = self._split_gray_img(img, n_labels=9)
         coords, masks = self._get_mixed_boxes_and_masks(

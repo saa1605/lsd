@@ -2,7 +2,7 @@ from mimetypes import init
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 
 import tqdm
@@ -36,7 +36,7 @@ class LingUNetAgent:
             else torch.device("cpu")
         )
         self.args.device = self.device
-        self.loss_func = nn.KLDivLoss(reduction="batchmean") # why batchmean? 
+        self.loss_func = nn.KLDivLoss(reduction="batchmean") 
 
         self.loader = None
         self.writer = None
@@ -59,7 +59,7 @@ class LingUNetAgent:
         self.model = LingUNet(self.args)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            self.model = nn.DataParallel(self.model)
+            self.model = nn.DataParallel(self.model, device_ids=[0])
         self.model.load_state_dict(self.state_dict)
         self.model = self.model.to(device=self.args.device)
         del self.state_dict, self.optimizer_state_dict, s

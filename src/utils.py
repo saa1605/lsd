@@ -6,7 +6,7 @@ import numpy as np
 import math
 import torch.nn as nn
 import os
-from shapely.geometry import Point, Polygon
+# from shapely.geometry import Point, Polygon
 
 
 def evaluate(args, splitFile, run_name):
@@ -262,3 +262,46 @@ def get_metrics(y_pred, y_true):
         "pred_mean": np.mean(y_pred),
     }
 
+
+
+
+def distance_metric_sdr(preds, targets):
+    """Calculate distances between model predictions and targets within a batch."""
+    preds = preds.cpu()
+    targets = targets.cpu()
+    distances = []
+    for pred, target in zip(preds, targets):
+        pred_coord = np.unravel_index(pred.argmax(), pred.size())
+        target_coord = np.unravel_index(target.argmax(), target.size())
+        dist = np.sqrt((target_coord[0] - pred_coord[0]) ** 2 + (target_coord[1] - pred_coord[1]) ** 2)
+        dist = dist * 8 
+        distances.append(dist)
+    return distances
+
+# def distance_metric_sdr(preds, x_target, y_target):
+#     """Calculate distances between model predictions and targets within a batch."""
+#     preds = preds.cpu()
+#     targets = targets.cpu()
+#     distances = []
+#     for pred, target in zip(preds, targets):
+#         pred = nn.functional.interpolate(
+#             pred.unsqueeze(1), (1500, 600), mode="bilinear"
+#         ).squeeze(1)
+#         # target = nn.functional.interpolate(
+#         #     target.unsqueeze(1), (1500, 600), mode="bilinear"
+#         # ).squeeze(1)
+#         pred_coord = np.unravel_index(pred.argmax(), pred.size())
+#         print(pred_coord)
+        
+#         x = pred_coord[0]*600 + pred_coord[2]
+#         y = pred_coord[1]
+#         dist = np.sqrt((x_target - x) ** 2 + (y_target - y) ** 2)
+#         distances.append(dist)
+#     return distances
+
+def accuracy_sdr(distances, margin=10):
+    """Calculating accuracy at 80 pixel by default"""
+    num_correct = 0
+    for distance in distances:
+        num_correct = num_correct + 1 if distance < margin else num_correct
+    return num_correct / len(distances)

@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw
 import copy
 import json
 import src.models.clip as clip 
-from skimage.draw import polygon2mask, polygon
+# from skimage.draw import polygon2mask, polygon
 import os 
 import sys 
 import cv2 
@@ -323,7 +323,7 @@ class LEDDataset(Dataset):
         text = text.squeeze(0) 
         # seq_length = np.array(self.seq_lengths[index])
         maps, conversions = self.gather_all_floors(index)
-        true_map, true_converion = self.gather_true_floor(index, False)
+        # true_map, true_converion = self.gather_true_floor(index, False)
         # region_segments = region_segments.squeeze(1)
         # rooms = self.gather_all_rooms(index)
         # if self.mode == 'train':

@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import copy
-from src.lingunet.language_model import RNN
-
+import src.models.clip as clip 
+import sys
 
 def clones(module, N):
     """Produce N identical layers"""
@@ -29,6 +29,7 @@ class LinearProjectionLayers(nn.Module):
                     padding=0,
                     stride=1,
                 ),
+                
                 nn.ReLU(),
                 nn.Conv2d(linear_hidden_size, 1, kernel_size=1, padding=0, stride=1),
             )
@@ -42,40 +43,43 @@ class LinearProjectionLayers(nn.Module):
             torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
 
-
 class LingUNet(nn.Module):
-    def __init__(self, rnn_args, args):
+    def __init__(self, args):
         super(LingUNet, self).__init__()
-        self.rnn_args = rnn_args
 
         self.m = args.num_lingunet_layers
-        self.image_channels = args.linear_hidden_size
-        self.freeze_resnet = args.freeze_resnet
+        self.image_channels = args.linear_hidden_size # +2 for coord conv
+        # self.freeze_resnet = args.freeze_resnet
         self.res_connect = args.res_connect
         self.device = args.device
 
-        resnet = models.resnet18(pretrained=True)
-        modules = list(resnet.children())[:-4]
-        self.resnet = nn.Sequential(*modules)
-        if self.freeze_resnet:
-            for p in self.resnet.parameters():
-                p.requires_grad = False
+        # resnet = models.resnet18(pretrained=True)
+        # modules = list(resnet.children())[:-4]
+        # self.resnet = nn.Sequential(*modules)
+        self.clip, _ = clip.load(args.clip_version)
+        self.clip = self.clip.float()
+        args.clip_preprocess = _
+        self.multitask_lambda = nn.Parameter(torch.tensor(5., requires_grad=True))
+        # if self.freeze_resnet:
+        #     for p in self.clip.parameters():
+        #         p.requires_grad = False
 
-        if not args.bidirectional:
-            self.rnn_hidden_size = args.rnn_hidden_size
-        else:
-            self.rnn_hidden_size = args.rnn_hidden_size * 2
-        assert self.rnn_hidden_size % self.m == 0
+        # if not args.bidirectional:
+        #     self.rnn_hidden_size = args.rnn_hidden_size
+        # else:
+        #     self.rnn_hidden_size = args.rnn_hidden_size * 2
+        # assert self.rnn_hidden_size % self.m == 0
+        self.rnn_hidden_size = 1024
 
-        self.rnn = RNN(
-            rnn_args["input_size"],
-            args.embed_size,
-            args.rnn_hidden_size,
-            args.num_rnn_layers,
-            args.embed_dropout,
-            args.bidirectional,
-            args.embedding_dir,
-        ).to(args.device)
+        # self.rnn = RNN(
+        #     rnn_args["input_size"],
+        #     args.embed_size,
+        #     args.rnn_hidden_size,
+        #     args.num_rnn_layers,
+        #     args.embed_dropout,
+        #     args.bidirectional,
+        #     args.embedding_dir,
+        # ).to(args.device)
 
         sliced_text_vector_size = self.rnn_hidden_size // self.m
         flattened_conv_filter_size = 1 * 1 * self.image_channels * self.image_channels
@@ -96,7 +100,7 @@ class LingUNet(nn.Module):
                         padding=2,
                         stride=1,
                     ),
-                    nn.BatchNorm2d(self.image_channels),
+                    nn.BatchNorm2d(self.image_channels, ),
                     nn.ReLU(True),
                 )
             )
@@ -141,17 +145,42 @@ class LingUNet(nn.Module):
         if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
             torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
+        
+    def add_coord(self, input):
+        b, _, h, w = input.size()
+        x_range = torch.linspace(-1, 1, w, device=input.device)
+        y_range = torch.linspace(-1, 1, h, device=input.device)
+        y, x = torch.meshgrid(y_range, x_range)
+        y = y.expand([b, 1, -1, -1])
+        x = x.expand([b, 1, -1, -1])
+        coord_feat = torch.cat([x, y], 1)
+        input = torch.cat([input, coord_feat], 1)
+        return input
 
-    def forward(self, images, texts, seq_lengths):
+    
+    def get_region_encodings(self, images, tokens, regions):
+        B, num_regions, C, H, W = regions.size()
+        regions = regions.view(B*num_regions, C, H, W)
+
+        image_encodings = self.clip.encode_image(regions)
+        text_encodings = self.clip.encode_text(tokens)
+        text_encodings = torch.repeat_interleave(text_encodings, num_regions, dim=0)
+        
+        return image_encodings, text_encodings 
+
+    def forward(self, images, tokens):
         B, num_maps, C, H, W = images.size()
         images = images.view(B * num_maps, C, H, W)
-        images = self.resnet(images)
 
+        # with torch.no_grad():
+        images = self.clip.visual.prepool_intermediate(images) # Output size -> (BATCH_SIZE, 512, 57, 97)
+        # images = self.add_coord(images) # Add coord conv, also change self.image_channels above 
         batch_size, image_channels, height, width = images.size()
 
-        text_embed = self.rnn(texts, seq_lengths)
-        text_embed = torch.repeat_interleave(text_embed, num_maps, dim=0)
+        # with torch.no_grad():
+        text_embed = self.clip.encode_text(tokens)
 
+        text_embed = torch.repeat_interleave(text_embed, num_maps, dim=0)
         Gs = []
         image_embeds = images
 
@@ -195,12 +224,15 @@ class LingUNet(nn.Module):
                 G = Gs.pop()
                 concated = torch.cat((H, G), 1)
                 H = self.deconv_layers[i](concated)
-    
         out = self.out_layers(H).squeeze(-1)
         out = out.view(B, num_maps, out.size()[-2], out.size()[-1])
+        # out = out * mask
         out = F.log_softmax(out.view(B, -1), 1).view(B, num_maps, height, width)
-        
-        return out
+
+        # image_encodings, text_encodings = self.get_region_encodings(images, tokens, regions)
+
+        return out#, image_encodings, text_encodings, self.multitask_lambda 
+
 
 
 def load_oldArgs(args, oldArgs):
@@ -222,13 +254,15 @@ def load_oldArgs(args, oldArgs):
     return args
 
 
-def convert_model_to_state(model, args, rnn_args, cnn_args):
+def convert_model_to_state(model, optimizer, args, rnn_args):
     state = {
-        "args": vars(args),
+        "args": args,
         "rnn_args": rnn_args,
         "state_dict": {},
+        "optimizer_state_dict": optimizer.state_dict(),
     }
     # use copies instead of references
     for k, v in model.state_dict().items():
         state["state_dict"][k] = v.clone().to(torch.device("cpu"))
-    return state
+
+    return state 

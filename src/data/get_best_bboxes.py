@@ -8,7 +8,7 @@ from torchvision.ops import nms
 from torch.utils.data import Dataset, DataLoader, SequentialSampler
 import cv2 
 from itertools import chain, combinations
-import pandas as pd 
+# import pandas as pd 
 import torch.nn.functional as F
 import random
 from tqdm import tqdm 
@@ -19,18 +19,18 @@ from ml_collections import config_dict
 
 setup_dict = {
     # paths
-    'raw_data_path': '../../data/raw',
-    'interim_save_path': '../../data/interim',
-    'processed_save_path': '../../data/processed',
-    'data_file': '../../data/raw/way_splits/test_data.json',
-    'valUnseen_data_file': '../../data/raw/way_splits/valUnseen_data.json',
-    'train_data_file': '../../data/raw/way_splits/train_data.json',
-    'valSenn_data_file': '../../data/raw/way_splits/valSeen_data.json',
-    'scan_levels_file': '../../data/raw/floorplans/scan_levels.json',
-    'node2pix_file': '../../data/raw/floorplans/allScans_Node2pix.json',
-    'geodistance_file': '../../data/raw/geodistance_nodes.json',
-    'mesh2meters_file': '../../data/raw/floorplans/pix2meshDistance.json',
-    'floorplans': '../../data/raw/floorplans',
+    'raw_data_path': '/data1/saaket/lsd_data/data/raw',
+    'interim_save_path': '/data1/saaket/lsd_data/data/interim',
+    'processed_save_path': '/data1/saaket/lsd_data/data/processed',
+    'data_file': '/data1/saaket/lsd_data/data/raw/way_splits/test_data.json',
+    'valUnseen_data_file': '/data1/saaket/lsd_data/data/raw/way_splits/valUnseen_data.json',
+    'train_data_file': '/data1/saaket/lsd_data/data/raw/way_splits/train_data.json',
+    'valSenn_data_file': '/data1/saaket/lsd_data/data/raw/way_splits/valSeen_data.json',
+    'scan_levels_file': '/data1/saaket/lsd_data/data/raw/floorplans/scan_levels.json',
+    'node2pix_file': '/data1/saaket/lsd_data/data/raw/floorplans/allScans_Node2pix.json',
+    'geodistance_file': '/data1/saaket/lsd_data/data/raw/geodistance_nodes.json',
+    'mesh2meters_file': '/data1/saaket/lsd_data/data/raw/floorplans/pix2meshDistance.json',
+    'floorplans': '/data1/saaket/lsd_data/data/raw/floorplans',
     'figures_path': '../../reports/figures',
 
     # model details 
@@ -202,55 +202,57 @@ def get_best_bbox(similarity_scores_arr, bbox_arr, scan2idx, mode='all_floors'):
         
 def main(config):
     rpn = RegionProposalNetwork()
-    
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    model, transform = clip.load(config.clip_version, device=config.device)
-
-    if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt'):
-        text_features = compute_text_features(config.data_file, model, device=config.device, mode=config.text_feature_mode)
-        
-        torch.save(text_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt')
-    else:
-        text_features = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt')
-    pp.pprint(text_features[0])
-
     unique_scans_val_unseen = get_unique_scans(config.data_file)
-    pp.pprint(unique_scans_val_unseen[0])
-
-
-    if not exists(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy"):
-        scan_bbox_arr = compute_all_bounding_boxes(unique_scans_val_unseen, config.floorplans, config.scan_levels_file, rpn)
-        np.save(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", scan_bbox_arr)
-    else:
-        scan_bbox_arr = np.load(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", allow_pickle=True)
-    pp.pprint(scan_bbox_arr[0])
+    scan_bbox_arr = compute_all_bounding_boxes(unique_scans_val_unseen, config.floorplans, config.scan_levels_file, rpn)
     
-    if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt'):
-        image_features = compute_image_features(unique_scans_val_unseen, scan_bbox_arr, config.floorplans, model, config.device, transform)
-        torch.save(image_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
-    else:
-        image_features = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
-    pp.pprint(image_features[0])
+    # device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    # model, transform = clip.load(config.clip_version, device=config.device)
 
-    scan2idx = compute_scan2idx(unique_scans_val_unseen)
-    pp.pprint(scan2idx)
+    # if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt'):
+    #     text_features = compute_text_features(config.data_file, model, device=config.device, mode=config.text_feature_mode)
+        
+    #     torch.save(text_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt')
+    # else:
+    #     text_features = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt')
+    # pp.pprint(text_features[0])
+
+    # unique_scans_val_unseen = get_unique_scans(config.data_file)
+    # pp.pprint(unique_scans_val_unseen[0])
+
+
+    # if not exists(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy"):
+    #     scan_bbox_arr = compute_all_bounding_boxes(unique_scans_val_unseen, config.floorplans, config.scan_levels_file, rpn)
+    #     np.save(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", scan_bbox_arr)
+    # else:
+    #     scan_bbox_arr = np.load(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", allow_pickle=True)
+    # pp.pprint(scan_bbox_arr[0])
     
-    if not exists(f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt'):
-        similarity_scores_arr = get_similarity_scores(image_features, text_features, scan2idx)
-        torch.save(similarity_scores_arr, f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt')
-    else:
-        similarity_scores_arr = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt')
+    # if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt'):
+    #     image_features = compute_image_features(unique_scans_val_unseen, scan_bbox_arr, config.floorplans, model, config.device, transform)
+    #     torch.save(image_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
+    # else:
+    #     image_features = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
+    # pp.pprint(image_features[0])
+
+    # scan2idx = compute_scan2idx(unique_scans_val_unseen)
+    # pp.pprint(scan2idx)
     
-    pp.pprint(similarity_scores_arr[0])
+    # if not exists(f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt'):
+    #     similarity_scores_arr = get_similarity_scores(image_features, text_features, scan2idx)
+    #     torch.save(similarity_scores_arr, f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt')
+    # else:
+    #     similarity_scores_arr = torch.load(f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt')
+    
+    # pp.pprint(similarity_scores_arr[0])
 
-    if not exists(f"{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt"):
-        best_bbox_arr = get_best_bbox(similarity_scores_arr, scan_bbox_arr, scan2idx, mode='all_floors')
-        torch.save(best_bbox_arr, f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt')
-    else:
-        best_bbox_arr = torch.load(f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt')
-    pp.pprint(best_bbox_arr[0])
+    # if not exists(f"{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt"):
+    #     best_bbox_arr = get_best_bbox(similarity_scores_arr, scan_bbox_arr, scan2idx, mode='all_floors')
+    #     torch.save(best_bbox_arr, f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt')
+    # else:
+    #     best_bbox_arr = torch.load(f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt')
+    # pp.pprint(best_bbox_arr[0])
 
-    print("Finished Processing Raw Data")
+    # print("Finished Processing Raw Data")
 
 if __name__ == '__main__':
     main(config)

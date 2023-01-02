@@ -59,7 +59,7 @@ class LingUNet(nn.Module):
         self.clip, _ = clip.load(args.clip_version)
         self.clip = self.clip.float()
         args.clip_preprocess = _
-        self.multitask_lambda = nn.Parameter(torch.tensor(5., requires_grad=True))
+        # self.multitask_lambda = nn.Parameter(torch.tensor(5., requires_grad=True))
         # if self.freeze_resnet:
         #     for p in self.clip.parameters():
         #         p.requires_grad = False

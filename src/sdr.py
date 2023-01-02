@@ -16,7 +16,7 @@ import wandb
 import random 
 from src.sdr_config import parse_args
 from src.features.sdr_loader import SDRLoader
-from src.models.sdr_lingunet_model import LingUNet, load_oldArgs, convert_model_to_state
+from src.models.sdr_lingunet_model import CLIPLingUNet, LingUNet, load_oldArgs, convert_model_to_state
 from src.utils import accuracy, distance_from_pixels, evaluate, distance_metric_sdr, accuracy_sdr
 
 # Ensure deterministic behavior
@@ -47,38 +47,39 @@ class LingUNetAgent:
                 os.system("mkdir {}".format(self.checkpoint_dir))
         self.model = None
         self.optimizer = None
-        self.args.clip_preprocess = None 
+        self.args.clip_preprocess = None
+        self.all_preds = [] 
+        self.all_dists = []
 
     def run_test(self):
         print("Starting Evaluation...")
-        s = torch.load(self.args.eval_ckpt, map_location='cuda:4')
-        self.old_args, self.rnn_args, self.state_dict, self.optimizer_state_dict = s.values()
-        # self.args = load_oldArgs(self.args, oldArgs)
-        self.model = LingUNet(self.args)
+        s = torch.load(self.args.eval_ckpt)
+        self.args, self.rnn_args, self.state_dict, self.optimizer_state_dict = s.values()
+        
+        if self.args.model == 'lingunet': 
+            self.model = LingUNet(self.rnn_args, self.args)
+        else: 
+            self.model = CLIPLingUNet(self.rnn_args, self.args)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            self.model = nn.DataParallel(self.model)
+            self.model = nn.DataParallel(self.model, device_ids=[0, 1, 2])
         self.model.load_state_dict(self.state_dict)
         self.model = self.model.to(device=self.args.device)
         del self.state_dict, self.optimizer_state_dict, s
         with torch.no_grad():
-            loss, acc0m, acc5m = self.eval_model(self.valseen_iterator, "valSeen")
-        self.scores("valSeen", loss, acc0m, acc5m, 0)
-        evaluate(self.args, "valSeen_data.json", self.args.run_name)
-        with torch.no_grad():
-            loss, acc0m, acc5m = self.eval_model(self.val_unseen_iterator, "valUnseen")
-        self.scores("valUnseen", loss, acc0m, acc5m, 0)
-        evaluate(self.args, "valUnseen_data.json", self.args.run_name)
-        with torch.no_grad():
-            loss, acc0m, acc5m = self.eval_model(self.test_iterator, "test")
+            loss, mean_dists, acc40px, acc80px, acc120px = self.eval_model(self.dev_iterator, "dev")
+
+        self.scores("dev", loss, mean_dists, acc40px, acc80px, acc120px, 0)
 
     def run_epoch(
         self,
         train_data
     ):
         B, num_maps, C, H, W = train_data['maps'].size()
+        
         """ calculate loss """
         batch_target = train_data['target'].to(self.args.device)
+        
         with torch.cuda.amp.autocast():
             preds = self.model(
                 train_data['maps'].to(device=self.args.device),
@@ -86,8 +87,10 @@ class LingUNetAgent:
                 train_data['seq_length']
             )
             loss = self.loss_func(preds, batch_target)
+        self.all_preds.extend(preds.cpu())
  
         distances = distance_metric_sdr(preds, batch_target)
+        self.all_dists.extend(distances)
 
         return loss, np.mean(distances), accuracy_sdr(distances, 40), accuracy_sdr(distances, 80), accuracy_sdr(distances, 120)
 
@@ -105,7 +108,8 @@ class LingUNetAgent:
             accuracy40px.append(acc40px)
             accuracy80px.append(acc80px)
             accuracy120px.append(acc120px)
-
+        # # torch.save(self.all_preds, f'../reports/predictions/{self.args.run_name}_preds.pth')
+        # torch.save(self.all_dists, f'../reports/predictions/{self.args.run_name}_dists.pth')
         return (
             np.mean(loss),
             np.mean(mean_distances),
@@ -175,7 +179,7 @@ class LingUNetAgent:
         print("Number of parameters:", num_params)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            self.model = nn.DataParallel(self.model, device_ids=[0, 1, 2, 3])
+            self.model = nn.DataParallel(self.model)
         self.model = self.model.to(self.args.device)
         
 
@@ -245,22 +249,22 @@ class LingUNetAgent:
             self.loader.datasets["train"],
             batch_size=self.args.batch_size,
             shuffle=True,
-            num_workers=16
+            num_workers=8
         )
         self.dev_iterator = DataLoader(
             self.loader.datasets["dev"],
             batch_size=self.args.batch_size,
             shuffle=False,
-            num_workers=16
+            num_workers=8
         )
 
-        if self.args.evaluate:
-            self.loader.build_dataset(file="/data1/saaket/touchdown/data/test.json")
-            self.test_iterator = DataLoader(
-                self.loader.datasets["test"],
-                batch_size=self.args.batch_size,
-                shuffle=False,
-            )
+        # if self.args.evaluate:
+        #     self.loader.build_dataset(file="/data1/saaket/touchdown/data/test.json")
+        #     self.test_iterator = DataLoader(
+        #         self.loader.datasets["test"],
+        #         batch_size=self.args.batch_size,
+        #         shuffle=False,
+        #     )
 
     def run(self):
         self.load_data()
@@ -275,6 +279,6 @@ if __name__ == "__main__":
     args = parse_args()
     agent = LingUNetAgent(args)
     
-    with wandb.init(project="LSD", name=args.run_name, notes="retrying sdr with RNN LingUNet with lower sigma value for gaussian targets"):
+    with wandb.init(project="LSD", name=args.run_name, notes="lingunet with region annotation in sdr. Perspective image region annotation. object annotations, split in noun chunks, no duplicates"):
         wandb.config.update(args)
         agent.run()

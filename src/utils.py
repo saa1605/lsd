@@ -6,7 +6,59 @@ import numpy as np
 import math
 import torch.nn as nn
 import os
+import spacy
+nlp = spacy.load("en_core_web_sm")
+import re 
 # from shapely.geometry import Point, Polygon
+
+stop_words = ['bear',
+ 'touchdown',
+ 'row',
+ 'part',
+ 'one',
+ 'end',
+ 'base',
+ 'luck',
+ 'step',
+ 'way',
+ 'above',
+ 'after',
+ 'around',
+ 'before',
+ 'beginning',
+ 'behind',
+ 'below',
+ 'beside',
+ 'side',
+ 'between',
+ 'bottom',
+ 'down',
+ 'end',
+ 'back',
+ 'front',
+ 'far',
+ 'finish',
+ 'front in',
+ 'inside',
+ 'left',
+ 'middle',
+ 'near',
+ 'next to',
+ 'off',
+ 'on',
+ 'out',
+ 'outside',
+ 'over',
+ 'right',
+ 'start',
+ 'through',
+ 'top',
+ 'under',
+ 'up',
+ 'upside down',
+ 'center',
+ 'side']
+
 
 
 def evaluate(args, splitFile, run_name):
@@ -305,3 +357,56 @@ def accuracy_sdr(distances, margin=10):
     for distance in distances:
         num_correct = num_correct + 1 if distance < margin else num_correct
     return num_correct / len(distances)
+
+
+
+def removearticles(text):
+    return  re.sub('^the |a |an |The |A |An ', '', text).strip()
+
+def find_objects_in_text(text):
+    doc = nlp(text)
+    objects_in_image = []
+    for oid, obj in enumerate(doc.noun_chunks):
+        tags = [t.tag_ for t in nlp(obj.text)]
+        start = obj.start
+        end = obj.end
+        if 'NN' in tags or 'NNS' in tags:
+            contains_stop_word = False
+            num_nouns = 0 
+            for word in nlp(obj.text):
+                if word.pos_ == 'NOUN':
+                    num_nouns += 1 
+            for word in nlp(obj.text):
+                if word.pos_ == 'NOUN' and word.text.lower() in stop_words and num_nouns <= 1:
+                    contains_stop_word = True
+                    break 
+            if not contains_stop_word:
+                objects_in_image.append([removearticles(obj.text), start, end])
+    if len(objects_in_image) < 1:
+        objects_in_image.append((text, 0, len(text)))
+    return objects_in_image
+    
+def add_prompt_to_touchdown_text(text, object_in_text, colors):
+    text2color = {}
+    doc = nlp(text)
+    doc_list = list(doc)
+    doc_list = [d.text for d in doc_list]
+    color_counter = 0
+    color_order = []
+    duplicates = []
+    for oid, obj in enumerate(list(reversed(object_in_text))):
+        obj_str, start, end = obj 
+        if obj_str not in text2color:
+            text2color[obj_str] = colors[color_counter % len(colors)]
+            
+            duplicates.append(0)
+        else:
+            duplicates.append(1)
+        color_order.append(text2color[obj_str])
+        doc_list.insert(end, f'in {text2color[obj_str]} color')
+        color_counter += 1
+    out = " ".join(doc_list)
+    return re.sub(r'\s([?.!"](?:\s|$))', r'\1', out.strip()), list(reversed(color_order)), duplicates 
+
+
+        

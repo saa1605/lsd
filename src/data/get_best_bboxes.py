@@ -34,7 +34,7 @@ setup_dict = {
     'figures_path': '../../reports/figures',
 
     # model details 
-    'clip_version': 'RN50',
+    'clip_version': 'ViT-B/32',
     'device': 'cuda:0' if torch.cuda.is_available() else 'cpu', 
     'tokenizer': clip.tokenize,
     # feature extraction modes 
@@ -205,9 +205,41 @@ def main(config):
     unique_scans_val_unseen = get_unique_scans(config.data_file)
     scan_bbox_arr = compute_all_bounding_boxes(unique_scans_val_unseen, config.floorplans, config.scan_levels_file, rpn)
     
-    # device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    # model, transform = clip.load(config.clip_version, device=config.device)
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    model, transform = clip.load(config.clip_version, device=config.device)
 
+    text_features = compute_text_features(config.data_file, model, device=config.device, mode=config.text_feature_mode)
+    torch.save(text_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt')
+    pp.pprint(text_features[0])
+
+    unique_scans_val_unseen = get_unique_scans(config.data_file)
+    pp.pprint(unique_scans_val_unseen[0])
+
+    scan_bbox_arr = np.load(f"{config.interim_save_path}/{config.rpn_mode}/scan_bbox_{config.data_mode}.npy", allow_pickle=True)
+    pp.pprint(scan_bbox_arr[0])
+
+
+    image_features = compute_image_features(unique_scans_val_unseen, scan_bbox_arr, config.floorplans, model, config.device, transform)
+    torch.save(image_features, f'{config.interim_save_path}/{config.rpn_mode}/normalized_image_features_{config.data_mode}.pt')
+
+    pp.pprint(image_features[0])
+
+    scan2idx = compute_scan2idx(unique_scans_val_unseen)
+    pp.pprint(scan2idx)
+
+
+    similarity_scores_arr = get_similarity_scores(image_features, text_features, scan2idx)
+    torch.save(similarity_scores_arr, f'{config.interim_save_path}/{config.rpn_mode}/similarity_scores_arr_{config.data_mode}_{config.text_feature_mode}.pt')
+
+    pp.pprint(similarity_scores_arr[0])
+    best_bbox_arr = get_best_bbox(similarity_scores_arr, scan_bbox_arr, scan2idx, mode='all_floors')
+    torch.save(best_bbox_arr, f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_{config.data_mode}_{config.text_feature_mode}_all_floors.pt')
+
+
+    pp.pprint(best_bbox_arr[0])
+
+    print("Finished Processing Raw Data")
+    
     # if not exists(f'{config.interim_save_path}/{config.rpn_mode}/normalized_text_features_{config.data_mode}_{config.text_feature_mode}.pt'):
     #     text_features = compute_text_features(config.data_file, model, device=config.device, mode=config.text_feature_mode)
         

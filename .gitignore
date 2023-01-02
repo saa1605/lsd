@@ -99,8 +99,10 @@ target/
 src/visualization/*.jpg
 src/outputs_nohup/
 src/*/*.out
+nohup.out
 src/data/sdr_bboxes_train.npy
 src/tests/dump
 src/sdr/
 ._.DS_Store
 src/nohup.out
+src/visualization/dump 

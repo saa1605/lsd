@@ -191,7 +191,7 @@ class LingUNetAgent:
         # self.optimizer.load_state_dict(loaded_optimizer_state_dict)
         self.scaler = torch.cuda.amp.GradScaler(init_scale=256)
         # del loaded_state_dict, loaded_optimizer_state_dict
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=2) 
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=4) 
         # self.scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.max_lr, steps_per_epoch=len(self.train_iterator), epochs=self.args.num_epoch)
 
         print("Starting Training...")
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     args = parse_args()
     agent = LingUNetAgent(args)
     
-    with wandb.init(project="LSD", name=args.run_name):
+    with wandb.init(project="LSD", name=args.run_name, notes="lingunet with region annotation in led, affirming baseline"):
         wandb.config.update(args)
         agent.run()
     # agent.run()

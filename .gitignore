@@ -106,3 +106,4 @@ src/sdr/
 ._.DS_Store
 src/nohup.out
 src/visualization/dump 
+src/nohup.out

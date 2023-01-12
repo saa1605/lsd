@@ -1,7 +1,39 @@
 import numpy as np 
 import torch 
 import json 
-from config import config 
+from ml_collections import config_dict
+import torch 
+import clip 
+
+setup_dict = {
+    # paths
+    'raw_data_path': '/data1/saaket/lsd_data/data/raw',
+    'interim_save_path': '/data1/saaket/lsd_data/data/interim',
+    'processed_save_path': '/data1/saaket/lsd_data/data/processed',
+    'valUnseen_data_file': '/data1/saaket/lsd_data/data/raw/way_splits/valUnseen_data.json',
+    'train_data_file': '/data1/saaket/lsd_data/data/raw/way_splits/train_data.json',
+    'valSenn_data_file': '/data1/saaket/lsd_data/data/raw/way_splits/valSeen_data.json',
+    'scan_levels_file': '/data1/saaket/lsd_data/data/raw/floorplans/scan_levels.json',
+    'node2pix_file': '/data1/saaket/lsd_data/data/raw/floorplans/allScans_Node2pix.json',
+    'geodistance_file': '/data1/saaket/lsd_data/data/raw/geodistance_nodes.json',
+    'mesh2meters_file': '/data1/saaket/lsd_data/data/raw/floorplans/pix2meshDistance.json',
+    'floorplans_dir': '/data1/saaket/lsd_data/data/raw/floorplans',
+    'figures_path': '../reports/figures',
+
+    # model details 
+    'clip_version': 'RN50',
+    'device': 'cuda:0' if torch.cuda.is_available() else 'cpu', 
+    'tokenizer': clip.tokenize,
+    # feature extraction modes 
+    'data_mode': 'train',
+    'text_feature_mode': 'one_utterance', 
+    'rpn_mode': 'conventional',
+    'colors': [(240,0,30), (155,50,210), (255,255,25), (0,10,255), (255,170,230), (0,255,0)],
+    'color_names': ['red', 'purple', 'yellow', 'blue', 'pink', 'green']
+
+}
+
+config = config_dict.ConfigDict(setup_dict)
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 import matplotlib.pyplot as plt
@@ -75,7 +107,7 @@ def compute(best_bbox_arr, config):
         view_points_in_all_bboxes = []
         for floor in floors:
             for item in candidate['floors'][floor]:
-                dialog, bbox = item
+                box_floor, dialog, bbox = item
                 view_points_in_bbox, _ = get_viewpoints_inside_bbox(bbox, floor, allscans_node2pix, candidate['scanName'])
                 view_points_in_all_bboxes.extend(view_points_in_bbox)
         try:
@@ -89,14 +121,14 @@ def compute(best_bbox_arr, config):
 
 
 if __name__ == '__main__':
-    best_bbox_arr = torch.load(f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_valUnseen_{config.text_feature_mode}_all_floors.pt')
+    best_bbox_arr = torch.load(f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_vision_transformer_valUnseen_one_utterance_all_floors.pt')
     dist, failed = compute(best_bbox_arr, config) 
     dist_np = np.array(dist)
     for i in [1, 3, 5, 10]:
         pp.pprint((f'bboxes close to {i}', (dist_np <= i).sum() / len(dist_np) ))
     print(len(dist_np))
     plt.hist(dist, bins = list(range(0, 30)))
-    plt.savefig(f'{config.figures_path}/bbox_dist_distribution_{config.rpn_mode}_{config.text_feature_mode}_{config.data_mode}.png')
+    plt.savefig(f'{config.figures_path}/bbox_dist_distribution_{config.rpn_mode}_{config.text_feature_mode}_{config.data_mode}_vision_transformer.png')
         
     
 

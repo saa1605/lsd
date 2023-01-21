@@ -107,7 +107,7 @@ def compute(best_bbox_arr, config):
         view_points_in_all_bboxes = []
         for floor in floors:
             for item in candidate['floors'][floor]:
-                box_floor, dialog, bbox = item
+                dialog, bbox = item
                 view_points_in_bbox, _ = get_viewpoints_inside_bbox(bbox, floor, allscans_node2pix, candidate['scanName'])
                 view_points_in_all_bboxes.extend(view_points_in_bbox)
         try:
@@ -121,14 +121,15 @@ def compute(best_bbox_arr, config):
 
 
 if __name__ == '__main__':
-    best_bbox_arr = torch.load(f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_vision_transformer_valUnseen_one_utterance_all_floors.pt')
+    # best_bbox_arr = torch.load(f'{config.processed_save_path}/{config.rpn_mode}/best_bbox_arr_train_one_utterance_all_floors.pt')
+    best_bbox_arr = torch.load('/data2/saaket/lsd_data/bboxes/best_bbox_arr_train_one_utterance_all_floors.pt')
     dist, failed = compute(best_bbox_arr, config) 
     dist_np = np.array(dist)
     for i in [1, 3, 5, 10]:
         pp.pprint((f'bboxes close to {i}', (dist_np <= i).sum() / len(dist_np) ))
     print(len(dist_np))
-    plt.hist(dist, bins = list(range(0, 30)))
-    plt.savefig(f'{config.figures_path}/bbox_dist_distribution_{config.rpn_mode}_{config.text_feature_mode}_{config.data_mode}_vision_transformer.png')
+    # plt.hist(dist, bins = list(range(0, 30)))
+    # plt.savefig(f'{config.figures_path}/bbox_dist_distribution_{config.rpn_mode}_{config.text_feature_mode}_{config.data_mode}_vision_transformer.png')
         
     
 

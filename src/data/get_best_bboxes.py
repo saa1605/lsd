@@ -131,7 +131,7 @@ def compute_image_features(scans, scan_bbox_arr, floorplan_path, model, device, 
     features = []
     for i, scan in enumerate(tqdm(scans)):
         features.append({'scanName': scan, 'features': {}})
-        for level in scan_bbox_arr[i]['coords'].keys():
+        for level in scan_bbox_arr[i]['coords'].keys(): #Diff
             image_path = f'{floorplan_path}/floor_{int(level)}/{scan}_{int(level)}.png'
             image = Image.open(image_path)
             coords = scan_bbox_arr[i]['coords'][level]

@@ -59,7 +59,7 @@ class LingUNetAgent:
         self.model = LingUNet(self.args)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            self.model = nn.DataParallel(self.model, device_ids=[0])
+            self.model = nn.DataParallel(self.model)
         self.model.load_state_dict(self.state_dict)
         self.model = self.model.to(device=self.args.device)
         del self.state_dict, self.optimizer_state_dict, s
@@ -186,12 +186,11 @@ class LingUNetAgent:
         self.model = self.model.to(device=self.args.device)
         # self.model.module.clip.load_state_dict(encoder_state_dict)
         # self.model.load_state_dict(loaded_state_dict)
-        
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.args.lr, eps=1e-4, weight_decay=0.001)
         # self.optimizer.load_state_dict(loaded_optimizer_state_dict)
         self.scaler = torch.cuda.amp.GradScaler(init_scale=256)
         # del loaded_state_dict, loaded_optimizer_state_dict
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=4) 
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=2) 
         # self.scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.max_lr, steps_per_epoch=len(self.train_iterator), epochs=self.args.num_epoch)
 
         print("Starting Training...")
@@ -293,7 +292,7 @@ if __name__ == "__main__":
     args = parse_args()
     agent = LingUNetAgent(args)
     
-    with wandb.init(project="LSD", name=args.run_name, notes="lingunet with region annotation in led, affirming baseline"):
+    with wandb.init(project="LSD", name=args.run_name, notes="lingunet with region annotation in led, affirming baseline. mode train, high decay"):
         wandb.config.update(args)
         agent.run()
     # agent.run()

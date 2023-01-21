@@ -40,8 +40,9 @@ class LEDDataset(Dataset):
         self.annotation_ids = annotation_ids
         self.mesh2meters = json.load(open(args.image_dir + "pix2meshDistance.json"))
         # if self.mode == 'train':
-        #     self.mode = 'train_augmented'
-        self.bbox_data = torch.load(f'{args.processed_save_path}/{args.rpn_mode}/best_bbox_arr_{self.mode}_{args.text_feature_mode}_all_floors.pt')
+            # self.mode = 'train_augmented'
+        # self.bbox_data = torch.load(f'{args.processed_save_path}/{args.rpn_mode}/best_bbox_arr_{self.mode}_{args.text_feature_mode}_all_floors.pt')
+        self.bbox_data = torch.load(f'/data2/saaket/lsd_data/bboxes2/best_bbox_arr_{self.mode}_{args.text_feature_mode}_all_floors.pt')
         self.image_size = [
             3,
             int(700 * self.args.ds_percent),
